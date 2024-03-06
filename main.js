@@ -7,8 +7,7 @@ const remote = require("./remote.js");
 const app = electron.app;
 // Module to create native browser window.
 const BrowserWindow = electron.BrowserWindow;
-// Replace with:
-const debug =false;
+
 //const { BrowserWindow } = require('@electron/remote/main')
 
 // In the main process:
@@ -24,6 +23,9 @@ const getPort = require("get-port");
 // Launching the mirror in dev mode
 const DevelopmentMode = process.argv.includes("dev");
 let usepm2 = false;
+// Replace with:
+const debug =DevelopmentMode?true:false;
+
 
 //if (debug) console.log("getting pm2 process list");
 exec("pm2 jlist", (error, stdout) => {

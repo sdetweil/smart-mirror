@@ -2,7 +2,7 @@
 (function () {
 	"use strict";
 
-	function AutoSleepService($interval, $rootScope, Focus) {
+	function AutoSleepService($interval, $rootScope, Focus, MQTTService) {
 		var service = {};
 		var autoSleepTimer;
 		service.woke = true;
@@ -56,6 +56,7 @@
 				if (Focus.get() === "sleep") {
 					service.woke = true;
 					$rootScope.$broadcast("userPresence", "true")
+					MQTTService.publish("autosleep/state", service.woke)					
 					switch (config.autoTimer.mode) {
 						case "monitor":
 						case "tv":
@@ -108,6 +109,7 @@
 			if (config.autoTimer.mode !== "disabled") {
 				service.woke = false;
 				$rootScope.$broadcast("userPresence", "false")
+				MQTTService.publish("autosleep/state", service.woke)
 				switch (config.autoTimer.mode) {
 					case "monitor":
 					case "tv":
@@ -156,7 +158,7 @@
 			console.debug("motion end detected");
 			service.startAutoSleepTimer();
 		});
-
+		
 		ipcRenderer.on("calibrated", () => {
 			console.debug("motion.js Calibrated");
 			service.startAutoSleepTimer();
@@ -165,6 +167,20 @@
 		ipcRenderer.on("Error", (event, error) => {
 			console.debug("Motion", error);
 		});
+
+		MQTTService.subscribe("autosleep", (message) => {
+			message = message.toLowerCase()
+			console.log("received mqtt message=" + message)
+			if (message === 'wake' || message === 'on')
+				service.wake()
+			else if (message === 'sleep' || message === 'off') {
+				service.sleep() 
+			}
+			else if (message === 'state') {
+				console.log("returning autosleep state ="+service.woke)
+				return service.woke
+			}
+		})
 
 		return service;
 	}

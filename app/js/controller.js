@@ -4,6 +4,7 @@
 	function MirrorCtrl(
 		Focus,
 		SpeechService,
+		MQTTService,
 		AutoSleepService,
 		$rootScope,
 		$scope,
@@ -47,6 +48,7 @@
 
 		var resetCommandTimeout;
 		var listeningTimeout;
+		MQTTService.start();
 		SpeechService.init({
 			listening: function (listening) {
 				$scope.listening = listening;
@@ -186,6 +188,7 @@
 		};
 
 		_this.init();
+
 	}
 
 	angular.module("SmartMirror").controller("MirrorCtrl", MirrorCtrl);
