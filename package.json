@@ -1,6 +1,6 @@
 {
   "name": "smart-mirror",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "description": "The fairest of them all",
   "main": "main.js",
   "scripts": {
