@@ -1,7 +1,10 @@
 (function () {
     'use strict';
     const mqtt = require('mqtt') //require('mqtt/lib/connect/index');
-    const id = "smart-mirror-hall"
+    const os = require("os")
+    const ip = require("ip")
+    const hostname= os.hostname()
+    const id = "smart-mirror-"+hostname
     const ha_prefix='homeassistant/'
     var client = null;
     var client_connected = false;
@@ -134,14 +137,14 @@
                     "device": {
                         "identifiers": id,
                         "manufacturer": "sam detweiler",
-                        "name": "Smart Mirror",
-                        "configuration_url": "http://192.168.12.121:8080",
+                        "name": "Smart Mirror on "+hostname,
+                        "configuration_url": "http://"+ip.address()+":"+config.remote.port+"/config.html",
                         "sw_version": "0.32"
  //                       "area":"Hall"
                     },                    
                     "object_id": id+  '/' +thing,
                     "unique_id": id + '/' + thing,
-                    "name": "screen on or off",
+                    "name": "screen",
                     "command_topic": root_topic+t.topic,
                     "payload_on": "on",
                     "payload_off": "off",
