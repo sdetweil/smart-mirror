@@ -55,6 +55,7 @@
     "fitbit-oauth2": "0.0.1",
     "humanize-duration": "^3.25.1",
     "hyperion-client": "1.0.3",
+    "ip": "^2.0.1",
     "jsonform": "git+https://git@github.com/jsonform/jsonform.git",
     "moment": "^2.29.1",
     "mqtt": "^5.3.5",
