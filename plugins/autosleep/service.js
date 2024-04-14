@@ -170,14 +170,14 @@
 
 		MQTTService.subscribe("autosleep", (message) => {
 			message = message.toLowerCase()
-			console.log("received mqtt message=" + message)
+			console.log("received mqtt message='" + message+"'")
 			if (message === 'wake' || message === 'on')
 				service.wake()
 			else if (message === 'sleep' || message === 'off') {
 				service.sleep() 
 			}
 			else if (message === 'state') {
-				console.log("returning autosleep state ="+service.woke)
+				console.log("mqtt returning autosleep state ="+service.woke)
 				return service.woke
 			}
 		})
