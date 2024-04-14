@@ -20,7 +20,7 @@
         let pending_connect = []
         let running=false
         var service = {};
-        let connect_handle = null
+        //let connect_handle = null
         service.running = false;
         service.paused = true;
 
@@ -28,8 +28,7 @@
         const do_connect = ()=>{
             console.log("[MQTT] connecting");
             if(client){
-                if(connect_handle==null)
-                    connect_handle = setInterval(client.connect(), 5000)
+                client.connect()
             }
         }
         service.start = function (topics) {
@@ -51,20 +50,16 @@
             if (client) {
                 client.on('connect', function () {
                     console.log("[MQTT] connected")
-
-                    if(connect_handle){
-                        clearInterval(connect_handle)
-                        connect_handle = null
-                        client_connected = true;
-                        if(client_reconnecting){
-                            service.resend_states()
-                        }
-                        else {
-                            pending_connect.forEach(d => {
-                                service.subscribe(d.topic, d.callback, d.options, true)
-                            })
-                            pending_connect = []
-                        }
+                    client_connected = true;
+                    if(client_reconnecting){
+                        service.resend_states()
+                        client_reconnecting=false;
+                    }
+                    else {
+                        pending_connect.forEach(d => {
+                            service.subscribe(d.topic, d.callback, d.options, true)
+                        })
+                        pending_connect = []
                     }
                 })
 
@@ -72,23 +67,10 @@
                     console.log("[MQTT] MQTT broker error: " , error);
                 });
 
-                client.on('disconnect', function (error) { //MQTT library function. Returns ERROR when connection to the broker could not be established.
-                    console.log("[MQTT] MQTT broker disconnected: " , error);
-                    if(client_connected == true){
-                        client_connected == false
-                        client_reconnecting = true
-                        do_connect();
-                    }
-                });
-
                 client.on('offline', function () { //MQTT library function. Returns OFFLINE when the client (our code) is not connected.
                     console.log("[MQTT] Could not establish connection to MQTT broker");
                     client_connected = false;
-                    //client.end();
-                    if(!connect_handle){
-                        client_reconnecting = true
-                    }
-                    do_connect()
+                    client_reconnecting = true
                 });
 
                 client.on('message', function (topic, message) {  //MQTT library function. Returns message topic/payload when it arrives to subscribed topics.
@@ -161,9 +143,13 @@
         }
         service.resend_states = function (){
             subscribed.forEach(t => {
-                t.device_state=t.callback('state')
-                console.log("mqtt resending state="+t.device_state+" for "+t.topic)
-                setTimeout((t)=>{service.publish(t.topic+"/state",t.device_state)}, 1000, t)
+                setTimeout((t)=>{
+                        t.device_state=t.callback('state')
+                        console.log("mqtt resending state="+t.device_state+" for "+t.topic)
+                        service.publish(t.topic+"/state",t.device_state)
+                    },
+                    1000, t
+                )
             })
         }
 
@@ -203,7 +189,7 @@
                 let rc = client.publish(discoverTopic, JSON.stringify(discoverPacket))                
                 //console.log("mqtt discovery publish rc=" + JSON.stringify(rc, null, 2))
                 //client.publish(discoverPacket.state_topic, discoverPacket.state_on.toString())
-                 setTimeout((t)=>{service.publish(t.topic+"/available",discoverPacket.payload_available)}, 1000, t)
+                // setTimeout((t)=>{service.publish(t.topic+"/available",discoverPacket.payload_available)}, 1000, t)
                 setTimeout((t)=>{service.publish(t.topic+"/state",t.device_state)}, 1000, t)
             })
         }
