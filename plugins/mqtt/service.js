@@ -3,58 +3,92 @@
     const mqtt = require('mqtt') //require('mqtt/lib/connect/index');
     const os = require("os")
     const ip = require("ip")
-    const hostname= os.hostname()
-    const id = "smart-mirror-"+hostname
-    const ha_prefix='homeassistant/'
-    var client = null;
-    var client_connected = false;
-    const subscribed = []
-    const root_topic = "smart-mirror/"
-    let pending_connect = []
-    let running=false
+
     /**
    * Factory function for the MQTTBridge service
    */
     console.log("registering mqtt service")
     var MQTTService = function ($rootScope, $interval) {
+        const hostname= os.hostname()
+        const id = "smart-mirror-"+hostname
+        const ha_prefix='homeassistant/'
+        let client = null;
+        let client_connected = false;
+        let client_reconnecting = false;
+        const subscribed = []
+        const root_topic = "smart-mirror/"
+        let pending_connect = []
+        let running=false
         var service = {};
+        let connect_handle = null
         service.running = false;
         service.paused = true;
-        console.log("in mqtt service")
 
+        console.log("in mqtt service")
+        const do_connect = ()=>{
+            console.log("[MQTT] connecting");
+            if(client){
+                if(connect_handle==null)
+                    connect_handle = setInterval(client.connect(), 5000)
+            }
+        }
         service.start = function (topics) {
             if (client == null) {
                 const options = {}
                 process.env.DEBUG = "fribble*" // "mqttjs:ws"
                 //options["rejectUnauthorized"] = self.config.mqttConfig.rejectUnauthorized;
                 if (config.mqtt !== undefined && config.mqtt.server_address !== undefined && config.mqtt.server_port !== undefined) {
-                    console.log("[MQTT] connecting");
                     if (config.mqtt.username != "" && config.mqtt.userpassword != "") {
                         options.username = config.mqtt.username
                         options.password = Buffer.from(config.mqtt.userpassword)
                         options.port = config.mqtt.server_port
+                        options.manualConnect = true
+                        client = mqtt.connect("ws://" + config.mqtt.server_address /*+ ":" + config.mqtt.server_port*/, options)
+                        do_connect()
                     }
-                    client = mqtt.connect("ws://" + config.mqtt.server_address /*+ ":" + config.mqtt.server_port*/, options)
                 }
             }
             if (client) {
                 client.on('connect', function () {
                     console.log("[MQTT] connected")
-                    client_connected = true;
-                    pending_connect.forEach(d => {
-                        service.subscribe(d.topic, d.callback, d.options, true)
-                    })
-                    pending_connect = []                    
+
+                    if(connect_handle){
+                        clearInterval(connect_handle)
+                        connect_handle = null
+                        client_connected = true;
+                        if(client_reconnecting){
+                            service.resend_states()
+                        }
+                        else {
+                            pending_connect.forEach(d => {
+                                service.subscribe(d.topic, d.callback, d.options, true)
+                            })
+                            pending_connect = []
+                        }
+                    }
                 })
 
                 client.on('error', function (error) { //MQTT library function. Returns ERROR when connection to the broker could not be established.
-                    console.log("[MQTT] MQTT broker error: " + error);
+                    console.log("[MQTT] MQTT broker error: " , error);
+                });
+
+                client.on('disconnect', function (error) { //MQTT library function. Returns ERROR when connection to the broker could not be established.
+                    console.log("[MQTT] MQTT broker disconnected: " , error);
+                    if(client_connected == true){
+                        client_connected == false
+                        client_reconnecting = true
+                        do_connect();
+                    }
                 });
 
                 client.on('offline', function () { //MQTT library function. Returns OFFLINE when the client (our code) is not connected.
                     console.log("[MQTT] Could not establish connection to MQTT broker");
                     client_connected = false;
-                    client.end();
+                    //client.end();
+                    if(!connect_handle){
+                        client_reconnecting = true
+                    }
+                    do_connect()
                 });
 
                 client.on('message', function (topic, message) {  //MQTT library function. Returns message topic/payload when it arrives to subscribed topics.
@@ -96,9 +130,9 @@
                     client.subscribe(root_topic + topic+'/#', options)
                     if (!running) {
                         running = true
-                        console.log("starting timer for ha discovery packet")
+                        console.log("mqtt starting timer for ha discovery packet")
                         setTimeout(() => {
-                            console.log("sending home assistant discover")
+                            console.log("mqtt sending home assistant discover")
                             service.HomeAssistantDiscover();
                         }, 10000)
                     }
@@ -122,8 +156,15 @@
                     client.publish(ha_prefix+switch_type+'/'+id+'/' + topic, JSON.stringify(data))
                 }
                 else
-                    client.publish(root_topic + info.topic, JSON.stringify(info.data))
+                    client.publish(root_topic + topic, JSON.stringify(data))
             }
+        }
+        service.resend_states = function (){
+            subscribed.forEach(t => {
+                t.device_state=t.callback('state')
+                console.log("mqtt resending state="+t.device_state+" for "+t.topic)
+                setTimeout((t)=>{service.publish(t.topic+"/state",t.device_state)}, 1000, t)
+            })
         }
 
         service.HomeAssistantDiscover = function () {
@@ -132,6 +173,7 @@
             const discoverTopic = ha_prefix+'switch/' + id + '/config'
             subscribed.forEach(t => {
                 t.device_state=t.callback('state')
+                console.log("mqtt state received="+t.device_state)
                 let thing = t.topic.split('/').slice(-1)
                 let discoverPacket = {
                     "device": {
@@ -142,6 +184,9 @@
                         "sw_version": "0.32"
  //                       "area":"Hall"
                     },                    
+                    //"availability_topic": ha_prefix+"switch/"+id+'/'+thing+"/available",
+                    //"payload_available": "Online",
+                    //"payload_not_available": "Offline",
                     "object_id": id+  '/' +thing,
                     "unique_id": id + '/' + thing,
                     "name": "screen",
@@ -154,10 +199,11 @@
                     "value_template": "{{ value_json.state }}",
                     "qos": 1
                 }
-                console.log("sending discover = "+discoverTopic+ " data="+JSON.stringify(discoverPacket,null,2))
+                console.log("mqtt sending discover = "+discoverTopic+ " data="+JSON.stringify(discoverPacket,null,2))
                 let rc = client.publish(discoverTopic, JSON.stringify(discoverPacket))                
-                console.log("discovery publish rc=" + JSON.stringify(rc, null, 2))
+                //console.log("mqtt discovery publish rc=" + JSON.stringify(rc, null, 2))
                 //client.publish(discoverPacket.state_topic, discoverPacket.state_on.toString())
+                 setTimeout((t)=>{service.publish(t.topic+"/available",discoverPacket.payload_available)}, 1000, t)
                 setTimeout((t)=>{service.publish(t.topic+"/state",t.device_state)}, 1000, t)
             })
         }
