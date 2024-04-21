@@ -114,13 +114,15 @@
 					//Convert timestamp
 					else if (type == 'DTSTAMP') {
 						//val = makeDate(type, val);
-					} else {
-						val = val
+					}
+
+					if(type == 'SUMMARY' && val !==undefined && val.length>3){
+						cur_event[type] = val
 							.replace(/\\r\\n/g, '<br />')
 							.replace(/\\n/g, '<br />')
 							.replace(/\\,/g, ',');
+							//console.log("calendar cur_event.summary="+cur_event["type"])
 					}
-
 					//Add the value to our event object.
 					if (type !== 'SUMMARY' || (type == 'SUMMARY' && cur_event['SUMMARY'] == undefined)) {
 						cur_event[type] = val;
