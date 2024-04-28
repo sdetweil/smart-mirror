@@ -20,6 +20,7 @@
         let pending_connect = []
         let running=false
         var service = {};
+        var reconnect_handle = null;
         //let connect_handle = null
         service.running = false;
         service.paused = true;
@@ -42,7 +43,12 @@
                         options.password = Buffer.from(config.mqtt.userpassword)
                         options.port = config.mqtt.server_port
                         options.manualConnect = true
-                        client = mqtt.connect("ws://" + config.mqtt.server_address /*+ ":" + config.mqtt.server_port*/, options)
+                        options.reconnectPeriod = 2000;
+                        // because we a re in browser, we need to use web sockets explicitly
+                        // as "mqtt://" wil not fall back down to web sockets on its own
+                        // also the broker needs to be listening for web socket connections
+                        // separately from mqtt connections..   then on a different port..
+                        client = mqtt.connect("ws://" + config.mqtt.server_address , options)
                         do_connect()
                     }
                 }
@@ -51,6 +57,10 @@
                 client.on('connect', function () {
                     console.log("[MQTT] connected")
                     client_connected = true;
+                    if(reconnect_handle){
+                        clearInterval(reconnect_handle)
+                        reconnect_handle=null
+                    }
                     if(client_reconnecting){
                         service.resend_states()
                         client_reconnecting=false;
@@ -69,8 +79,12 @@
 
                 client.on('offline', function () { //MQTT library function. Returns OFFLINE when the client (our code) is not connected.
                     console.log("[MQTT] Could not establish connection to MQTT broker");
-                    client_connected = false;
-                    client_reconnecting = true
+                    if(client_connected === true){
+                        client_connected = false;
+                        client_reconnecting = true
+                        client.reconnecting = true
+                        reconnect_handle=setInterval(()=>{console.log("mqtt attempting reconnect");do_connect()}, 2000)
+                    }
                 });
 
                 client.on('message', function (topic, message) {  //MQTT library function. Returns message topic/payload when it arrives to subscribed topics.
@@ -89,6 +103,9 @@
                             entry[0].callback(message.toString())
                     }
                 });
+                client.on('reconnect', ()=>{
+                    console.log("mqtt client reconnect started")
+                })
             }
         }
         
