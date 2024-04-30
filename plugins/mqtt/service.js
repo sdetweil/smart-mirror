@@ -9,14 +9,15 @@
    */
     console.log("registering mqtt service")
     var MQTTService = function ($rootScope, $interval) {
+        const root_topic = "smart-mirror"
         const hostname= os.hostname()
-        const id = "smart-mirror-"+hostname
+        const id = root_topic+"-"+hostname
         const ha_prefix='homeassistant/'
         let client = null;
         let client_connected = false;
         let client_reconnecting = false;
         const subscribed = []
-        const root_topic = "smart-mirror/"
+
         let pending_connect = []
         let running=false
         var service = {};
@@ -90,7 +91,9 @@
                 client.on('message', function (topic, message) {  //MQTT library function. Returns message topic/payload when it arrives to subscribed topics.
                     console.log('[MQTT] MQTT message received. Topic: ' + topic + ', message: ' + message);
                     const entry = subscribed.filter(x => {
-                        if (topic.slice(root_topic.length).startsWith(x.topic))
+                        let id1 = topic.slice(id.length+1)
+                        console.log("mqtt id1  = "+ id1.length + " topic length ="+x.topic.length)
+                        if (id1.startsWith(x.topic))
                             return true
                     })
                     if (entry.length) {
@@ -114,7 +117,7 @@
 
         }
 
-        service.subscribe = function (topic, callback , options , retry=false) {
+        service.subscribe = function (topic, callback , options = {} , retry=false) {
             if (client_connected) {
                 let previous = subscribed.filter(entry => {
                     if (entry.topic === topic)
@@ -123,10 +126,14 @@
                 if (previous.length) {
                     throw ("topic already registered")
                 }
+                // if the requestor didn't specifiy the clean option (auto resubscribe at broker)
+                if(options['clean'] === undefined )
+                    // request it
+                    options.clean = true
                 if (typeof callback === 'string' || typeof callback === 'function') {
                     subscribed.push({ "topic": topic, "callback": callback, "options": options })
-                    console.log("[MQTT] subscribing to "+root_topic+topic)
-                    client.subscribe(root_topic + topic+'/#', options)
+                    console.log("[MQTT] subscribing to "+id+'/'+topic)
+                    client.subscribe(id+'/' + topic+'/#', options)
                     if (!running) {
                         running = true
                         console.log("mqtt starting timer for ha discovery packet")
@@ -152,10 +159,10 @@
                         data = { state: data }
                     }
                     console.log("sending state for " + topic + " mqtt topic=" + ha_prefix + id + '/' + topic)
-                    client.publish(ha_prefix+switch_type+'/'+id+'/' + topic, JSON.stringify(data))
+                    client.publish(ha_prefix+switch_type+'/'+id+'/' + topic, JSON.stringify(data), {retain:true})
                 }
                 else
-                    client.publish(root_topic + topic, JSON.stringify(data))
+                    client.publish(root_topic+'/' + topic, JSON.stringify(data), {retain:true})
             }
         }
         service.resend_states = function (){
@@ -193,7 +200,7 @@
                     "object_id": id+  '/' +thing,
                     "unique_id": id + '/' + thing,
                     "name": "screen",
-                    "command_topic": root_topic+t.topic,
+                    "command_topic": id + '/' + t.topic, // root_topic+t.topic,
                     "payload_on": "on",
                     "payload_off": "off",
                     "state_topic":ha_prefix+"switch/"+id+'/'+thing+"/state",
