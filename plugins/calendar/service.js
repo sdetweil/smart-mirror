@@ -52,7 +52,7 @@
 			var events = [];
 
 			//Clean string and split the file so we can handle it (line by line)
-			var cal_array = data.replace(new RegExp("\\r", "g"), "").replace(/\n /g, "").split("\n");
+			var cal_array = data.replace(new RegExp("\\r", "g"), "").replace(/\n /g, "").replace(/\\; /g,", ").split("\n");
 
 			//Keep track of when we are activly parsing an event
 			var in_event = false;
