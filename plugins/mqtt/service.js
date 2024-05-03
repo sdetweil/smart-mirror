@@ -44,11 +44,11 @@
                         options.password = Buffer.from(config.mqtt.userpassword)
                         options.port = config.mqtt.server_port
                         options.manualConnect = true
-                        options.reconnectPeriod = 2000;
-                        // because we a re in browser, we need to use web sockets explicitly
-                        // as "mqtt://" wil not fall back down to web sockets on its own
+                        options.reconnectPeriod = 5000;
+                        // because we are in browser, we need to use web sockets explicitly
+                        // as "mqtt://" will not fall back down to web sockets on its own
                         // also the broker needs to be listening for web socket connections
-                        // separately from mqtt connections..   then on a different port..
+                        // separately from mqtt connections..   then also on a different port..
                         client = mqtt.connect("ws://" + config.mqtt.server_address , options)
                         do_connect()
                     }
@@ -74,6 +74,10 @@
                     }
                 })
 
+                client.on('disconnect',()=>{
+                    console.log("[MQTT] clinet disconnected")
+                })
+
                 client.on('error', function (error) { //MQTT library function. Returns ERROR when connection to the broker could not be established.
                     console.log("[MQTT] MQTT broker error: " , error);
                 });
@@ -83,8 +87,8 @@
                     if(client_connected === true){
                         client_connected = false;
                         client_reconnecting = true
-                        client.reconnecting = true
-                        reconnect_handle=setInterval(()=>{console.log("mqtt attempting reconnect");do_connect()}, 2000)
+                        //client.reconnecting = true
+                        reconnect_handle=setInterval(()=>{console.log("mqtt attempting reconnect");do_connect()}, 5000)
                     }
                 });
 
@@ -92,7 +96,7 @@
                     console.log('[MQTT] MQTT message received. Topic: ' + topic + ', message: ' + message);
                     const entry = subscribed.filter(x => {
                         let id1 = topic.slice(id.length+1)
-                        console.log("mqtt id1  = "+ id1.length + " topic length ="+x.topic.length)
+                        //console.log("mqtt id1  = "+ id1.length + " topic length ="+x.topic.length)
                         if (id1.startsWith(x.topic))
                             return true
                     })
