@@ -79,7 +79,7 @@
 				//$http.get("https://api.openweathermap.org/data/2.5/onecall?lat=30.4548443&lon=-97.6222674&appid=a6bf9feaa86bc2677df1e5f46bd79d55")
 				$http
 					.get(
-						"https://api.openweathermap.org/data/2.5/onecall?lat=" +
+						"https://api.openweathermap.org/data/3.0/onecall?lat=" +
 							geoposition.coords.latitude.toString().substring(0, 10) +
 							"&lon=" +
 							geoposition.coords.longitude.toString().substring(0, 11) +
