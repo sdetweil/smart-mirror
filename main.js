@@ -79,10 +79,11 @@ try {
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
-
+	app.disableHardwareAcceleration();
 function createWindow() {
 	app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 	app.commandLine.appendSwitch("disable-http-cache");
+
 	// Get the displays and render the mirror on a secondary screen if it exists
 	var atomScreen = null;
 	if (electron.screen == undefined) {
