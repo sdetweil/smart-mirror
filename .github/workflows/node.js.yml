@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "w_mqtt" ]
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "w_mqtt" ]
 
 jobs:
   build:
