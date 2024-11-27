@@ -4,7 +4,7 @@
   "description": "The fairest of them all",
   "main": "main.js",
   "scripts": {
-    "install": "bower install",
+    "install1": "bower install",
     "start": "DISPLAY=\"${DISPLAY:=:0}\" electron --disable_gpu main.js $@",
     "train-model": "electron scripts/train-model.js",
     "sonus": "node sonus.js",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/evancohen/smart-mirror.git"
+    "url": "git+https://github.com/sdetweil/smart-mirror.git"
   },
   "keywords": [
     "Smart Mirror",
@@ -30,9 +30,8 @@
   "author": "Evan Cohen",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/evancohen/smart-mirror/issues"
+    "url": "https://github.com/sdetweil/smart-mirror/issues"
   },
-  "homepage": "https://github.com/evancohen/smart-mirror",
   "devDependencies": {
     "eslint": "^6.8.0"
   },
@@ -43,11 +42,15 @@
     "@google-cloud/speech": "^4.2.0",
     "@grpc/grpc-js": "^1.2.11",
     "alphavantage": "^2.5.0",
+    "angular": "^1.8.3",
+    "angular-animate": "^1.8.3",
+    "angular-dynamic-locale": "^0.1.38",
     "angular-i18n": "^1.8.2",
     "angular-moment": "^1.3.0",
-    "angular-sanitize": "1.5.11",
+    "angular-sanitize": "1.8.3",
+    "angular-translate": "^2.19.1",
+    "angular-translate-loader-static-files": "^2.19.1",
     "annyang": "^2.6.1",
-    "bower": "^1.8.12",
     "cheerio": "^1.0.0-rc.5",
     "electron": "^31.1.0",
     "electron-json-storage": "^4.4.0",
@@ -61,7 +64,9 @@
     "mqtt": "^5.3.5",
     "pretty-ms": "^7.0.1",
     "recorder": "git+https://git@github.com/sdetweil/recorder.git",
+    "rrule": "^2.1.0",
     "rss-parser": "^3.12.0",
+    "skycons": "github:darkskyapp/skycons",
     "socket.io": "2.3.0",
     "sonus": "git+https://git@github.com/sdetweil/sonus.git",
     "spotify-web-api-node": "^5.0.0",
@@ -69,6 +74,17 @@
     "winston": "^3.3.3",
     "wiredep-cli": "^0.1.0",
     "youtube-api": "^3.0.1"
+  },
+  "overrides": {
+    "moment": {
+      "main": "min/moment-with-locales.js"
+    },
+    "rrule": {
+      "main": "node_modules/rrule/dist/es5/rrule.js"
+    },
+    "skycons": {
+      "main": "./skycons.js"
+    }
   },
   "eslintConfig": {
     "extends": "eslint:recommended",
@@ -88,7 +104,7 @@
       "annyang": false,
       "moment": false,
       "config": false,
-      "RRule": false
+      "RRule": true
     }
   }
 }
