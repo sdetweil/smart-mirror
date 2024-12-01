@@ -4,6 +4,6 @@ Everybody is invited and welcome to contribute to the Smart Mirror. There is a l
 
 The process is straight-forward.
 
- - Fork Smart Mirror [git repository](https://github.com/evancohen/smart-mirror).
+ - Fork Smart Mirror [git repository](https://github.com/sdetweil/smart-mirror).
  - Write the code for your feature/capability.
- - Create a Pull Request against the [**dev**](https://github.com/evancohen/smart-mirror/tree/dev) branch of the Smart Mirror.
+ - Create a Pull Request against the [**dev**](https://github.com/sdetweil/smart-mirror/tree/dev) branch of the Smart Mirror.
