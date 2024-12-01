@@ -1,8 +1,0 @@
-{
-  "apps" : [{
-    "name"        : "smart-mirror",
-    "script"      : "/home/sam/temp/sssss/smart-mirror/scripts/bash-start.sh",
-    "watch"       : ["/home/sam/temp/sssss/smart-mirror/config.json"],
-    "autorestart" : true
-  }]
-}
