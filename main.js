@@ -11,6 +11,17 @@ const BrowserWindow = electron.BrowserWindow;
 const debug =false;
 //const { BrowserWindow } = require('@electron/remote/main')
 
+// GPU flags must be set before app is ready. Electron 27 on Pi Bookworm
+// otherwise tries Vulkan/Dawn and can crash when images (e.g. maps) paint.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch("disable-gpu");
+app.commandLine.appendSwitch("disable-gpu-compositing");
+app.commandLine.appendSwitch("disable-software-rasterizer");
+app.commandLine.appendSwitch("disable-features", "Vulkan,WebGPU");
+app.commandLine.appendSwitch("use-gl", "swiftshader");
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+app.commandLine.appendSwitch("disable-http-cache");
+
 // In the main process:
 require('@electron/remote/main').initialize()
 // Prevent the monitor from going to sleep.
@@ -79,8 +90,6 @@ try {
 let mainWindow;
 
 function createWindow() {
-	app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
-	app.commandLine.appendSwitch("disable-http-cache");
 	// Get the displays and render the mirror on a secondary screen if it exists
 	var atomScreen = null;
 	if (electron.screen == undefined) {

@@ -21,9 +21,12 @@ function MapController($scope, $http, GeolocationService, SpeechService, Focus) 
 			targetZoom = map.zoom;
 		}
 		if(config.geoPosition && config.geoPosition.key) {
+			// Static Maps free tier max is 640px per side; scale=2 keeps it sharp.
+			var mapWidth = Math.min(window.innerWidth || 640, 640);
+			var mapHeight = Math.min(1200, 640);
 			return "https://maps.googleapis.com/maps/api/staticmap?key="+config.geoPosition.key+"&center=" + targetCenter + "&zoom=" + targetZoom +
-						"&format=png&sensor=false&scale=2&size=" + window.innerWidth +
-						"x1200&maptype=roadmap&style=visibility:on|weight:1|invert_lightness:true|saturation:-100|lightness:1";
+						"&format=png&sensor=false&scale=2&size=" + mapWidth +
+						"x" + mapHeight + "&maptype=roadmap&style=visibility:on|weight:1|invert_lightness:true|saturation:-100|lightness:1";
 		}
 		else	
 			return "no geolocatgion keys pecified"
