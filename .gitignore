@@ -24,3 +24,4 @@ app/css/local.css
 .editorconfig
 plugins/
 !.gitkeep
+.cursor
