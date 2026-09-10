@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "install": "bower install",
-    "start": "DISPLAY=\"${DISPLAY:=:0}\" electron --disable_gpu main.js ",
+    "start": "DISPLAY=\"${DISPLAY:=:0}\" LIBGL_ALWAYS_SOFTWARE=1 electron --disable-gpu --disable-gpu-compositing --use-gl=swiftshader main.js ",
     "train-model": "electron scripts/train-model.js",
     "sonus": "node sonus.js",
     "motion": "sudo node motion.js",
@@ -48,8 +48,8 @@
     "angular-sanitize": "1.5.11",
     "annyang": "^2.6.1",
     "bower": "^1.8.12",
-    "cheerio": "^1.0.0-rc.12",
-    "electron": "^27.0.2",
+    "cheerio": "1.0.0-rc.12",
+    "electron": "27.3.11",
     "electron-json-storage": "^4.4.0",
     "express": "^4.17.1",
     "fitbit-oauth2": "0.0.1",
@@ -70,7 +70,10 @@
     "youtube-api": "^3.0.1"
   },
   "engines": {
-    "node": ">=18 <23"
+    "node": "18.x || 20.x"
+  },
+  "overrides": {
+    "undici": "^5.28.4"
   },
   "eslintConfig": {
     "extends": "eslint:recommended",
