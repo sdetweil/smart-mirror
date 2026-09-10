@@ -17,13 +17,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
+          # package-lock.json is gitignored in this repo, so npm cache cannot be used.
 
       # Lint only: skip native builds (sonus/snowboy), bower, and apt scripts.
       - name: Install dependencies
