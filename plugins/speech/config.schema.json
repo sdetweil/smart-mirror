@@ -47,6 +47,34 @@
                     "minimum": 0,
                     "maximum": 1,
                     "required": true
+                },
+                "audioGain": {
+                    "type": "number",
+                    "title": "{{audio gain}}",
+                    "default": 1.0,
+                    "minimum": 0.1,
+                    "maximum": 2.0,
+                    "required": true
+                },
+                "hotwordCooldownMs": {
+                    "type": "integer",
+                    "title": "{{hotword cooldown}}",
+                    "default": 4000,
+                    "minimum": 0,
+                    "required": true
+                },
+                "emptyFinalBackoffMs": {
+                    "type": "integer",
+                    "title": "{{empty final backoff}}",
+                    "default": 30000,
+                    "minimum": 0,
+                    "required": true
+                },
+                "resource": {
+                    "type": "string",
+                    "title": "{{resource file}}",
+                    "default": "",
+                    "required": false
                 }
             }
         }
@@ -92,8 +120,43 @@
                     "step": 0.1,
                     "key": "speech.sensitivity",
                     "description":"{{sensitivity help}}"
+                },
+                {
+                    "type": "range",
+                    "step": 0.1,
+                    "key": "speech.audioGain",
+                    "description":"{{audio gain help}}"
+                },
+                {
+                    "key": "speech.hotwordCooldownMs",
+                    "description":"{{hotword cooldown help}}"
+                },
+                {
+                    "key": "speech.emptyFinalBackoffMs",
+                    "description":"{{empty final backoff help}}"
+                },
+                {
+                    "key": "speech.resource",
+                    "description":"{{resource file help}}"
                 }
             ]
         }
-    ]
+    ],
+    "value": {
+        "speech": {
+            "device": "default",
+            "keyFilename": "keyfile.json",
+            "hotwords": [
+                {
+                    "keyword": "smart mirror",
+                    "model": "smart_mirror.umdl"
+                }
+            ],
+            "sensitivity": 0.5,
+            "audioGain": 1.0,
+            "hotwordCooldownMs": 4000,
+            "emptyFinalBackoffMs": 30000,
+            "resource": ""
+        }
+    }
 }
