@@ -7,10 +7,18 @@
       "hotwords": "Keyword-Spotter-Hotwords",
       "Keyword Name": "Schlüsselwortname",
       "Model Filename": "Modell Dateiname",
-      "mic sensitivity": "Mikrofonempfindlichkeit",
+      "mic sensitivity": "Hotword-Empfindlichkeit",
       "form title": "Speech Settings",
       "speech dev help": "<p> Hilfe finden Sie in <a href='https://docs.smart-mirror.io'>den Dokumenten.</a> </BR> Wir sind auch im <a href='https://discord.gg/EMb4ynW'>Discord Chat mit</a> verfügbar <a href='https://discord.gg/EMb4ynW'><img src='https://discordapp.com/api/guilds/258802311298547713/widget.png' alt=\"Menschen online\"/></a> um Ihnen in Echtzeit zu helfen. </p>",
-      "sensitivity help": "<p id='sensitivityHelper'> Bewegen Sie sich über die Leiste, um den Wert hier anzuzeigen. </p>"
+      "sensitivity help": "<p id='sensitivityHelper'> Bewegen Sie sich über die Leiste, um den Wert hier anzuzeigen. </p>",
+      "audio gain": "Hotword Audio-Verstärkung",
+      "hotword cooldown": "Hotword-Abklingzeit (ms)",
+      "empty final backoff": "Leer-Ergebnis Wartezeit (ms)",
+      "resource file": "Snowboy-Ressourcendatei (optional)",
+      "audio gain help": "<p id='audioGainHelper'>Use 1.0 for normal mics. Values above 1.0 amplify audio and increase false hotwords.</p>",
+      "hotword cooldown help": "<p>Minimum time between accepted hotwords before voice reco streaming can start again.</p>",
+      "empty final backoff help": "<p>After voice reco returns an empty transcript (likely a false hotword), wait this long before accepting another hotword.</p>",
+      "resource file help": "<p>Leave blank to use the classic sonus resources/common.res. Only set this if you need a specific Snowboy resource file path.</p>"
     }
   }
 }

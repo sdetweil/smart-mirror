@@ -1,12 +1,17 @@
 #!/bin/bash
+# Snowboy needs cblas. Keep this non-interactive so npm install cannot hang.
 mac=$(uname -s)
-if [ $mac == 'Darwin' ]; then
-  brew tap awsteiner/science
-  brew install o2scl
+if [ "$mac" = "Darwin" ]; then
+  # Homebrew installs can hang/prompt during npm; skip if already present.
+  if ! (test -e /usr/local/lib/libcblas.dylib || test -e /opt/homebrew/lib/libcblas.dylib || brew list openblas >/dev/null 2>&1); then
+    echo "installcblas: openblas/cblas not found. On macOS install with: brew install openblas"
+  fi
 else
- v=$(apt -qq list libatlas3-base 2>/dev/null)
- d=$(apt -qq list libatlas-base-dev 2>/dev/null)
- if [ "$v". == "." -o "$d". == "." ]; then
-   sudo apt-get install libatlas-base-dev libatlas3-base
- fi
+  if ! dpkg -s libatlas-base-dev >/dev/null 2>&1; then
+    if [ -t 0 ] || [ "${CI}." != "." ]; then
+      sudo apt-get install -y libatlas-base-dev libatlas3-base
+    else
+      echo "installcblas: missing libatlas-base-dev; run: sudo apt-get install -y libatlas-base-dev libatlas3-base"
+    fi
+  fi
 fi

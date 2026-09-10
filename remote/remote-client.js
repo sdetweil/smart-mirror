@@ -185,7 +185,15 @@ $(function () {
 								$('#sensitivityHelper').html($(evt.target).val());
 							}
 							data.configJSON.form[rootIdx].items[formIdx] = formItm
-							return true
+						}
+						if (formItm.key == 'speech.audioGain') {
+							formItm.onChange = function (evt) {
+								$('#audioGainHelper').html($(evt.target).val());
+							}
+							formItm.onInput = function (evt) {
+								$('#audioGainHelper').html($(evt.target).val());
+							}
+							data.configJSON.form[rootIdx].items[formIdx] = formItm
 						}
 					})
 					return true
