@@ -2,32 +2,85 @@ name: CI
 
 on:
   push:
-    branches: [master, main, dev]
   pull_request:
-    branches: [master, main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  lint:
-    name: ESLint (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [18, 20]
-
+  install:
+    name: Install application
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      npm_config_python: /usr/bin/python3
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v7
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: ${{ matrix.node-version }}
-          # package-lock.json is gitignored in this repo, so npm cache cannot be used.
+          persist-credentials: false
 
-      # Lint only: skip native builds (sonus/snowboy), bower, and apt scripts.
-      - name: Install dependencies
-        run: npm install --ignore-scripts
+      # Preserve Travis's runtime for the legacy Electron/Snowboy dependencies.
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '14.21.3'
+          package-manager-cache: false
 
-      - name: Run ESLint
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 python3-pip python3-setuptools libatlas-base-dev libatlas3-base libmagic-dev sox libsox-fmt-all
+
+      - name: Use HTTPS for public GitHub dependencies
+        run: |
+          git config --global url."https://github.com/".insteadOf git://github.com/
+          git config --global --add url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://github.com/".insteadOf git@github.com:
+
+      # Sonus invokes ./node_modules/.bin tools, so keep its dependencies local.
+      # Defer scripts only until its obsolete TypeScript option is patched.
+      - name: Download application dependencies
+        run: npm install --global-style --ignore-scripts --no-audit --no-fund
+
+      - name: Fix Sonus TypeScript compatibility
+        run: node scripts/patch-sonus-config.js
+
+      # npm 6 rebuild runs dependency preinstall/install/postinstall scripts.
+      - name: Build all application dependencies
+        run: npm rebuild
+
+      # npm run install also runs the root preinstall and postinstall hooks.
+      - name: Set up application assets
+        run: npm run install
+
+      - name: Run lint checks after installation
+        run: npm test
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      # npm test only needs ESLint. A full app install also runs hardware
+      # setup scripts and installs legacy native modules, Electron and Bower.
+      - name: Install lint dependencies
+        run: |
+          eslint_version=$(node -p "require('./package.json').devDependencies.eslint")
+          npm install --prefix "$RUNNER_TEMP/smart-mirror-lint" --ignore-scripts --no-audit --no-fund --package-lock=false "eslint@$eslint_version"
+          echo "$RUNNER_TEMP/smart-mirror-lint/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Run lint checks
         run: npm test
