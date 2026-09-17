@@ -8,7 +8,16 @@
                     "default": "en-US",
                     "type": "string",
                     "title": "{{Language}}",
-                    "required": true
+                    "required": true,
+                    "enum":[
+                        "en-US",
+                        "de-DE",
+                        "es-ES",
+                        "fr-FR",
+                        "it-IT",
+                        "ko-KO",
+                        "pt-PT"
+                    ]
                 },
                 "layout": {
                     "default": "main",

@@ -29,7 +29,11 @@
         "model": "smart_mirror.umdl"
       }
     ],
-    "sensitivity": "0.5"
+    "sensitivity": 0.5,
+    "audioGain": 1.0,
+    "hotwordCooldownMs": 4000,
+    "emptyFinalBackoffMs": 30000,
+    "resource": ""
   },
   "forecast": {
     "key": "",
