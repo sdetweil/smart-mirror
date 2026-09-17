@@ -179,7 +179,6 @@ function Weather($scope, $rootScope, $interval, $http, $translate, GeolocationSe
 				for (i = 0; i < datalength; i++) {
 					weather.forecast.data.daily.data[i] = {}
 					weather.forecast.data.daily.data[i].dt=weather.forecast.data.daily[i].dt
-					
 					weather.forecast.data.daily.data[i].day =
 						i > 0
 							? moment.unix(weather.forecast.data.daily[i].dt).format("ddd")

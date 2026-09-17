@@ -25,6 +25,7 @@ const { ipcRenderer } = require("electron");
 		var callbacks = {};
 		var commandList = [];
 		var commandPage = [];
+
 		config.communications_port = 5200 || remote.getGlobal("sonusSocket");
 		service.init = function (cb) {
 			// workaround so we can trigger requests at any time
