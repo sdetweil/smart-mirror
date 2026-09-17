@@ -77,6 +77,22 @@ jobs:
       - name: Run lint checks after installation
         run: npm test
 
+  # Stable check name for branch protection / merge gates that still
+  # require "Install application" (pre-matrix job name).
+  install-ok:
+    name: Install application
+    needs: install
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: always()
+    steps:
+      - name: Confirm matrix install jobs succeeded
+        run: |
+          if [ "${{ needs.install.result }}" != "success" ]; then
+            echo "Install matrix result: ${{ needs.install.result }}"
+            exit 1
+          fi
+
   lint:
     name: ESLint
     runs-on: ubuntu-24.04
