@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: Install application (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        # Sonus/snowboy native build needs Node 18+ (C++17).
+        node-version: ['18', '20', '22', '24']
+    env:
+      npm_config_python: /usr/bin/python3
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          # package-lock.json is gitignored in this repo.
+          package-manager-cache: false
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 python3-pip python3-setuptools libatlas-base-dev libatlas3-base libmagic-dev sox libsox-fmt-all
+
+      - name: Use HTTPS for public GitHub dependencies
+        run: |
+          git config --global url."https://github.com/".insteadOf git://github.com/
+          git config --global --add url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://github.com/".insteadOf git@github.com:
+
+      # Download first without scripts, then patch Sonus TS config, then build natives.
+      - name: Download application dependencies
+        run: npm install --global-style --ignore-scripts --no-audit --no-fund
+
+      - name: Fix Sonus TypeScript compatibility
+        run: node scripts/patch-sonus-config.js
+
+      - name: Build native dependencies (including sonus/snowboy)
+        run: npm rebuild
+
+      - name: Verify sonus native binding
+        run: |
+          node - <<'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const sonusRoot = path.dirname(require.resolve('sonus/package.json'));
+          const indexJs = path.join(sonusRoot, 'snowboy/lib/node/index.js');
+          if (!fs.existsSync(indexJs)) {
+            console.error('Missing compiled snowboy JS:', indexJs);
+            process.exit(1);
+          }
+          // Load sonus; fails if .node binding is missing/wrong ABI.
+          require('sonus');
+          console.log('sonus load ok from', sonusRoot);
+          EOF
+
+      # Root install hook runs bower + copyjsonform.
+      - name: Set up application assets
+        run: npm run install
+
+      - name: Run lint checks after installation
+        run: npm test
+
+  # Stable check name for branch protection / merge gates that still
+  # require "Install application" (pre-matrix job name).
+  install-ok:
+    name: Install application
+    needs: install
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: always()
+    steps:
+      - name: Confirm matrix install jobs succeeded
+        run: |
+          if [ "${{ needs.install.result }}" != "success" ]; then
+            echo "Install matrix result: ${{ needs.install.result }}"
+            exit 1
+          fi
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install lint dependencies
+        run: |
+          eslint_version=$(node -p "require('./package.json').devDependencies.eslint")
+          npm install --prefix "$RUNNER_TEMP/smart-mirror-lint" --ignore-scripts --no-audit --no-fund --package-lock=false "eslint@$eslint_version"
+          echo "$RUNNER_TEMP/smart-mirror-lint/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Run lint checks
+        run: npm test
