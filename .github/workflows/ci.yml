@@ -77,10 +77,12 @@ jobs:
           EOF
 
       # Bower/wiredep under --global-style cannot resolve nested deps, so use npx.
+      # jsonform is served from node_modules by remote.js (no copy into remote/).
       - name: Set up application assets
         run: |
           npx --yes bower@1.8.12 install --allow-root --config.interactive=false
           npx --yes --package=wiredep-cli wiredep -s index.html
+          test -d node_modules/jsonform
           npm run postinstall
 
       - name: Run lint checks after installation
