@@ -1,1 +1,0 @@
-cp -p -R node_modules/jsonform/ remote

@@ -178,9 +178,10 @@ let _spotpath = document.currentScript.src.substring(
 					var id = null;
 					// remove any apostrophes
 					//name = name.replace(/'/g,"")
+					console.log("spotify devices=",data)
 					// Check for name kerword of <named_device> or 'this device'<default_device>
 					name =
-						name.toLowerCase() === "this device" && default_device
+						(name.toLowerCase() === "this device" || name.toLowerCase() === "here") && default_device
 							? default_device
 							: name;
 
@@ -223,6 +224,7 @@ let _spotpath = document.currentScript.src.substring(
 						id = device.id
 					}
 				}) */
+			console.log(" spotify received transfer request to "+name)
 			getDeviceID(name).then((id) => {
 				if (id) {
 					console.log(id);
@@ -237,6 +239,7 @@ let _spotpath = document.currentScript.src.substring(
 						}
 					);
 				} else {
+					console.log("spotify didn't find location id")
 					return null;
 				}
 			});

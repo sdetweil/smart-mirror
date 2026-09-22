@@ -34,10 +34,13 @@ remote.start = function () {
 	}
 	getFiles()
 
+	const path = require('path')
 	const server = require('http').createServer(app)
 
 	// Start the server
 	server.listen(config.remote.port)
+	// Serve jsonform straight from node_modules — no postinstall copy into remote/.
+	app.use('/jsonform', express.static(path.join(__dirname, 'node_modules', 'jsonform')))
 	// Use the remote directory and initilize socket connection
 	app.use(express.static(__dirname + '/remote'))
 	remote.io = require('socket.io')(server)

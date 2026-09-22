@@ -16,7 +16,7 @@ jsonform
 spotify-token.json
 main_index.html
 motion 
-package-lock.json
+#package-lock.json
 app/locales/??c.json
 app/css/local.css
 .gitignore
