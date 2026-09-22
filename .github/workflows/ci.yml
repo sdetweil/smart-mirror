@@ -76,12 +76,11 @@ jobs:
           console.log('sonus load ok from', sonusRoot);
           EOF
 
-      # `npm run install` only runs the "install" script (bower), not lifecycle hooks.
-      # Use the local bower binary explicitly — newer npm + --global-style often
-      # leaves `bower` off PATH even though the package is installed.
+      # Bower under --global-style cannot resolve its own deps (q/mout/...), so
+      # invoke a self-contained bower via npx instead of node_modules/bower/bin.
       - name: Set up application assets
         run: |
-          node ./node_modules/bower/bin/bower install
+          npx --yes bower@1.8.12 install --allow-root --config.interactive=false
           npm run postinstall
 
       - name: Run lint checks after installation
