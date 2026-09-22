@@ -1,1 +1,17 @@
-cp -p -R node_modules/jsonform/ remote
+#!/bin/bash
+# Copy jsonform into remote/jsonform for the config UI.
+# Important: do not use a trailing slash on the source path.
+# On macOS (BSD cp), `cp -R src/ dest` copies *contents* into dest;
+# on Linux that often still creates dest/jsonform. Target the folder
+# explicitly so both platforms behave the same.
+set -e
+cd "$(dirname "$0")/.."
+src="node_modules/jsonform"
+dest="remote/jsonform"
+if [ ! -d "$src" ]; then
+  echo "copyjsonform: missing $src (run npm install first)" >&2
+  exit 1
+fi
+rm -rf "$dest"
+cp -p -R "$src" "$dest"
+echo "copyjsonform: installed $src -> $dest"

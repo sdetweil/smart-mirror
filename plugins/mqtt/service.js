@@ -11,7 +11,12 @@
     var MQTTService = function ($rootScope, $interval) {
         const root_topic = "smart-mirror"
         const hostname= os.hostname()
+        // Command/subscribe topics keep the real hostname.
         const id = root_topic+"-"+hostname
+        // HA discovery <object_id> may only use [a-zA-Z0-9_-]. Hostnames like
+        // Mac-mini.local are rejected silently if used in the discovery topic.
+        const haSafeId = (value) => String(value).replace(/[^a-zA-Z0-9_-]/g, "_")
+        const discovery_id = haSafeId(id)
         const ha_prefix='homeassistant/'
         let client = null;
         let client_connected = false;
@@ -20,19 +25,42 @@
 
         let pending_connect = []
         let running=false
+        let handlersBound = false
         var service = {};
-        var reconnect_handle = null;
         //let connect_handle = null
         service.running = false;
         service.paused = true;
 
         console.log("in mqtt service")
-        const do_connect = ()=>{
-            console.log("[MQTT] connecting");
-            if(client){
-                client.connect()
+
+        // Re-subscribe after broker restart (clean session / Mosquitto update).
+        // mqtt.js also resubscribes, but we keep an explicit pass so HA commands
+        // work even if the library's resubscribe map was cleared mid-reconnect.
+        const resubscribeAll = () => {
+            subscribed.forEach((entry) => {
+                const topic = id + '/' + entry.topic + '/#'
+                console.log("[MQTT] re-subscribing to " + topic)
+                client.subscribe(topic, entry.options || { qos: 0 })
+            })
+        }
+
+        const onBrokerOnline = (wasReconnect) => {
+            client_connected = true
+            console.log("[MQTT] connected" + (wasReconnect ? " (reconnect)" : ""))
+            if (wasReconnect) {
+                resubscribeAll()
+                service.resend_states()
+                // Broker may have wiped retained discovery during update.
+                setTimeout(() => service.HomeAssistantDiscover(), 2000)
+                client_reconnecting = false
+            } else {
+                pending_connect.forEach((d) => {
+                    service.subscribe(d.topic, d.callback, d.options, true)
+                })
+                pending_connect = []
             }
         }
+
         service.start = function (topics) {
             if (client == null) {
                 const options = {}
@@ -43,53 +71,47 @@
                         options.username = config.mqtt.username
                         options.password = Buffer.from(config.mqtt.userpassword)
                         options.port = config.mqtt.server_port
-                        options.manualConnect = true
-                        options.reconnectPeriod = 5000;
-                        // because we are in browser, we need to use web sockets explicitly
-                        // as "mqtt://" will not fall back down to web sockets on its own
-                        // also the broker needs to be listening for web socket connections
-                        // separately from mqtt connections..   then also on a different port..
-                        client = mqtt.connect("ws://" + config.mqtt.server_address , options)
-                        do_connect()
+                        options.clientId = id
+                        // Let mqtt.js own reconnect — a custom setInterval(connect)
+                        // races it and clears its reconnect timer mid-attempt.
+                        options.reconnectPeriod = 5000
+                        options.connectTimeout = 30 * 1000
+                        options.resubscribe = true
+                        options.clean = true
+                        client = mqtt.connect("mqtt://" + config.mqtt.server_address, options)
                     }
                 }
             }
-            if (client) {
+            if (client && !handlersBound) {
+                handlersBound = true
+
                 client.on('connect', function () {
-                    console.log("[MQTT] connected")
-                    client_connected = true;
-                    if(reconnect_handle){
-                        clearInterval(reconnect_handle)
-                        reconnect_handle=null
-                    }
-                    if(client_reconnecting){
-                        service.resend_states()
-                        client_reconnecting=false;
-                    }
-                    else {
-                        pending_connect.forEach(d => {
-                            service.subscribe(d.topic, d.callback, d.options, true)
-                        })
-                        pending_connect = []
-                    }
+                    onBrokerOnline(client_reconnecting)
                 })
 
                 client.on('disconnect',()=>{
-                    console.log("[MQTT] clinet disconnected")
+                    console.log("[MQTT] client disconnected")
                 })
 
                 client.on('error', function (error) { //MQTT library function. Returns ERROR when connection to the broker could not be established.
                     console.log("[MQTT] MQTT broker error: " , error);
                 });
 
+                client.on('close', function () {
+                    console.log("[MQTT] connection closed");
+                    if (client_connected) {
+                        client_connected = false
+                        client_reconnecting = true
+                    }
+                })
+
                 client.on('offline', function () { //MQTT library function. Returns OFFLINE when the client (our code) is not connected.
                     console.log("[MQTT] Could not establish connection to MQTT broker");
-                    if(client_connected === true){
-                        client_connected = false;
+                    if (client_connected) {
+                        client_connected = false
                         client_reconnecting = true
-                        //client.reconnecting = true
-                        reconnect_handle=setInterval(()=>{console.log("mqtt attempting reconnect");do_connect()}, 5000)
                     }
+                    // mqtt.js will reconnect on its own via reconnectPeriod
                 });
 
                 client.on('message', function (topic, message) {  //MQTT library function. Returns message topic/payload when it arrives to subscribed topics.
@@ -111,7 +133,9 @@
                     }
                 });
                 client.on('reconnect', ()=>{
-                    console.log("mqtt client reconnect started")
+                    console.log("[MQTT] client reconnect started")
+                    client_reconnecting = true
+                    client_connected = false
                 })
             }
         }
@@ -130,14 +154,14 @@
                 if (previous.length) {
                     throw ("topic already registered")
                 }
-                // if the requestor didn't specifiy the clean option (auto resubscribe at broker)
-                if(options['clean'] === undefined )
-                    // request it
-                    options.clean = true
+                // subscribe options: qos only (do not pass MQTT connect "clean" here)
+                const subOpts = {
+                    qos: options.qos !== undefined ? options.qos : 0
+                }
                 if (typeof callback === 'string' || typeof callback === 'function') {
-                    subscribed.push({ "topic": topic, "callback": callback, "options": options })
+                    subscribed.push({ "topic": topic, "callback": callback, "options": subOpts })
                     console.log("[MQTT] subscribing to "+id+'/'+topic)
-                    client.subscribe(id+'/' + topic+'/#', options)
+                    client.subscribe(id+'/' + topic+'/#', subOpts)
                     if (!running) {
                         running = true
                         console.log("mqtt starting timer for ha discovery packet")
@@ -162,8 +186,11 @@
                     if (switch_type === 'switch') {
                         data = { state: data }
                     }
-                    console.log("sending state for " + topic + " mqtt topic=" + ha_prefix + id + '/' + topic)
-                    client.publish(ha_prefix+switch_type+'/'+id+'/' + topic, JSON.stringify(data), {retain:true})
+                    // Keep state topics under the same sanitized discovery id HA expects.
+                    const entity = topic.replace(/\/state$/, '')
+                    const stateTopic = ha_prefix + switch_type + '/' + discovery_id + '/' + haSafeId(entity) + '/state'
+                    console.log("sending state for " + topic + " mqtt topic=" + stateTopic)
+                    client.publish(stateTopic, JSON.stringify(data), {retain:true})
                 }
                 else
                     client.publish(root_topic+'/' + topic, JSON.stringify(data), {retain:true})
@@ -184,40 +211,39 @@
         service.HomeAssistantDiscover = function () {
 
             console.log("HA discovery build for " + subscribed.length + " entities")
-            const discoverTopic = ha_prefix+'switch/' + id + '/config'
             subscribed.forEach(t => {
                 t.device_state=t.callback('state')
                 console.log("mqtt state received="+t.device_state)
-                let thing = t.topic.split('/').slice(-1)
+                const thing = haSafeId(t.topic.split('/').pop())
+                const entityId = discovery_id + "_" + thing
+                // Topic object_id must be [a-zA-Z0-9_-] only; dots in .local hostnames break discovery.
+                const discoverTopic = ha_prefix + 'switch/' + entityId + '/config'
+                const stateTopic = ha_prefix + 'switch/' + discovery_id + '/' + thing + '/state'
                 let discoverPacket = {
                     "device": {
-                        "identifiers": id,
+                        "identifiers": [discovery_id],
                         "manufacturer": "sam detweiler",
                         "name": "Smart Mirror on "+hostname,
                         "configuration_url": "http://"+ip.address()+":"+config.remote.port+"/config.html",
                         "sw_version": "0.32"
  //                       "area":"Hall"
                     },                    
-                    //"availability_topic": ha_prefix+"switch/"+id+'/'+thing+"/available",
-                    //"payload_available": "Online",
-                    //"payload_not_available": "Offline",
-                    "object_id": id+  '/' +thing,
-                    "unique_id": id + '/' + thing,
+                    "object_id": entityId,
+                    "unique_id": entityId,
                     "name": "screen",
                     "command_topic": id + '/' + t.topic, // root_topic+t.topic,
                     "payload_on": "on",
                     "payload_off": "off",
-                    "state_topic":ha_prefix+"switch/"+id+'/'+thing+"/state",
-                    "state_on": true,
-                    "state_off": false, 
+                    "state_topic": stateTopic,
+                    "state_on": "True",
+                    "state_off": "False",
                     "value_template": "{{ value_json.state }}",
                     "qos": 1
                 }
                 console.log("mqtt sending discover = "+discoverTopic+ " data="+JSON.stringify(discoverPacket,null,2))
-                let rc = client.publish(discoverTopic, JSON.stringify(discoverPacket))                
-                //console.log("mqtt discovery publish rc=" + JSON.stringify(rc, null, 2))
-                //client.publish(discoverPacket.state_topic, discoverPacket.state_on.toString())
-                // setTimeout((t)=>{service.publish(t.topic+"/available",discoverPacket.payload_available)}, 1000, t)
+                // Retained discovery is required so HA still sees the device after restart.
+                let rc = client.publish(discoverTopic, JSON.stringify(discoverPacket), {retain: true, qos: 1})
+                //console.log("mqtt discovery publish rc=", rc)// + JSON.stringify(rc, null, 2))
                 setTimeout((t)=>{service.publish(t.topic+"/state",t.device_state)}, 1000, t)
             })
         }
