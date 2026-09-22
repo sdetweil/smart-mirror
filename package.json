@@ -11,7 +11,7 @@
     "motion": "sudo node motion.js",
     "enable-motion": "npm install johnny-five raspi-io",
     "update": "git pull && npm install",
-    "wiredep": "wiredep -s index.html",
+    "wiredep": "npx --yes --package=wiredep-cli wiredep -s index.html",
     "test": "eslint . --ignore-path .gitignore",
     "test-fix": "eslint . --ignore-path .gitignore --fix",
     "postinstall": "bash scripts/copyjsonform && bash scripts/fix-electron-macos",

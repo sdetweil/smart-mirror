@@ -76,11 +76,11 @@ jobs:
           console.log('sonus load ok from', sonusRoot);
           EOF
 
-      # Bower under --global-style cannot resolve its own deps (q/mout/...), so
-      # invoke a self-contained bower via npx instead of node_modules/bower/bin.
+      # Bower/wiredep under --global-style cannot resolve nested deps, so use npx.
       - name: Set up application assets
         run: |
           npx --yes bower@1.8.12 install --allow-root --config.interactive=false
+          npx --yes --package=wiredep-cli wiredep -s index.html
           npm run postinstall
 
       - name: Run lint checks after installation
