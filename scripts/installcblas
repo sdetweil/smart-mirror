@@ -1,17 +1,37 @@
 #!/bin/bash
-# Snowboy needs cblas. Keep this non-interactive so npm install cannot hang.
+# Snowboy needs cblas (and related build packages). Keep this non-interactive
+# so npm install cannot hang on brew/apt prompts.
+#
+# Note: for git dependencies (sonus), npm prepares them in a nested install that
+# does NOT run this root preinstall. CI workflows must apt-install these packages
+# before `npm ci` / `npm install`, or sonus's own preinstall must install them.
+set -e
 mac=$(uname -s)
 if [ "$mac" = "Darwin" ]; then
   # Homebrew installs can hang/prompt during npm; skip if already present.
   if ! (test -e /usr/local/lib/libcblas.dylib || test -e /opt/homebrew/lib/libcblas.dylib || brew list openblas >/dev/null 2>&1); then
     echo "installcblas: openblas/cblas not found. On macOS install with: brew install openblas"
   fi
-else
-  if ! dpkg -s libatlas-base-dev >/dev/null 2>&1; then
-    if [ -t 0 ] || [ "${CI}." != "." ]; then
-      sudo apt-get install -y libatlas-base-dev libatlas3-base
-    else
-      echo "installcblas: missing libatlas-base-dev; run: sudo apt-get install -y libatlas-base-dev libatlas3-base"
-    fi
+  exit 0
+fi
+
+pkgs=(libatlas-base-dev libatlas3-base libmagic-dev sox libsox-fmt-all build-essential)
+need=()
+for pkg in "${pkgs[@]}"; do
+  if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+    need+=("$pkg")
   fi
+done
+
+if [ ${#need[@]} -eq 0 ]; then
+  exit 0
+fi
+
+# Install when interactive OR when running under CI (GitHub Actions sets CI=true).
+if [ -t 0 ] || [ -n "${CI:-}" ]; then
+  echo "installcblas: installing ${need[*]}"
+  sudo apt-get update
+  sudo apt-get install -y "${need[@]}"
+else
+  echo "installcblas: missing ${need[*]}; run: sudo apt-get install -y ${need[*]}"
 fi

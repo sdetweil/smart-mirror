@@ -1,0 +1,27 @@
+#!/bin/bash
+# macOS Gatekeeper quarantines Electron downloads and may move Electron.app
+# to Trash on first launch (ENOENT on npm start). Clear quarantine and
+# ad-hoc codesign so the binary stays in node_modules.
+set -e
+if [ "$(uname -s)" != "Darwin" ]; then
+  exit 0
+fi
+root="$(cd "$(dirname "$0")/.." && pwd)"
+app="$root/node_modules/electron/dist/Electron.app"
+if [ ! -d "$app" ]; then
+  # Binary missing (trashed or incomplete install) — re-download.
+  if [ -f "$root/node_modules/electron/install.js" ]; then
+    echo "fix-electron-macos: Electron.app missing; re-running electron install"
+    (cd "$root/node_modules/electron" && node install.js)
+  else
+    echo "fix-electron-macos: electron package not installed; skip"
+    exit 0
+  fi
+fi
+if [ ! -d "$app" ]; then
+  echo "fix-electron-macos: Electron.app still missing after install" >&2
+  exit 1
+fi
+xattr -cr "$app" 2>/dev/null || true
+codesign --force --deep --sign - "$app" >/dev/null
+echo "fix-electron-macos: signed $app"
