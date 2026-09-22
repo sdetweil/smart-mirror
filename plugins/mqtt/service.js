@@ -18,6 +18,14 @@
         const haSafeId = (value) => String(value).replace(/[^a-zA-Z0-9_-]/g, "_")
         const discovery_id = haSafeId(id)
         const ha_prefix='homeassistant/'
+        // HA availability + MQTT last-will ("die") when the mirror process drops.
+        const availabilityTopic = ha_prefix + 'switch/' + discovery_id + '/available'
+        const payloadOnline = 'Online'
+        const payloadOffline = 'Offline'
+        // Primary switch state topic (autosleep / screen). Used for MQTT last-will so
+        // an ungraceful close (kill window / crash) clears retained "on" in HA.
+        const autosleepStateTopic = ha_prefix + 'switch/' + discovery_id + '/autosleep/state'
+        const dieStatePayload = JSON.stringify({ state: false })
         let client = null;
         let client_connected = false;
         let client_reconnecting = false;
@@ -26,6 +34,7 @@
         let pending_connect = []
         let running=false
         let handlersBound = false
+        let stopping = false
         var service = {};
         //let connect_handle = null
         service.running = false;
@@ -44,9 +53,16 @@
             })
         }
 
+        const publishAvailability = (payload) => {
+            if (!client) return
+            console.log("[MQTT] availability " + payload + " -> " + availabilityTopic)
+            client.publish(availabilityTopic, payload, { retain: true, qos: 1 })
+        }
+
         const onBrokerOnline = (wasReconnect) => {
             client_connected = true
             console.log("[MQTT] connected" + (wasReconnect ? " (reconnect)" : ""))
+            publishAvailability(payloadOnline)
             if (wasReconnect) {
                 resubscribeAll()
                 service.resend_states()
@@ -78,6 +94,16 @@
                         options.connectTimeout = 30 * 1000
                         options.resubscribe = true
                         options.clean = true
+                        // Die message: broker publishes this when the TCP session drops
+                        // without a clean MQTT DISCONNECT (window kill, crash, force-quit).
+                        // MQTT allows only one will — clear the screen state so HA is not
+                        // left with retained "on". Graceful stop() also publishes Offline.
+                        options.will = {
+                            topic: autosleepStateTopic,
+                            payload: dieStatePayload,
+                            retain: true,
+                            qos: 1
+                        }
                         client = mqtt.connect("mqtt://" + config.mqtt.server_address, options)
                     }
                 }
@@ -99,6 +125,11 @@
 
                 client.on('close', function () {
                     console.log("[MQTT] connection closed");
+                    if (stopping) {
+                        client_connected = false
+                        client_reconnecting = false
+                        return
+                    }
                     if (client_connected) {
                         client_connected = false
                         client_reconnecting = true
@@ -107,6 +138,9 @@
 
                 client.on('offline', function () { //MQTT library function. Returns OFFLINE when the client (our code) is not connected.
                     console.log("[MQTT] Could not establish connection to MQTT broker");
+                    if (stopping) {
+                        return
+                    }
                     if (client_connected) {
                         client_connected = false
                         client_reconnecting = true
@@ -137,12 +171,46 @@
                     client_reconnecting = true
                     client_connected = false
                 })
+
+                // Graceful Electron/window shutdown — publish off + offline before TCP drops.
+                window.addEventListener('beforeunload', function () {
+                    service.stop()
+                })
             }
         }
         
 
         service.stop = function () {
-
+            if (stopping || !client) {
+                return
+            }
+            stopping = true
+            console.log("[MQTT] stop / die — clearing screen state and availability")
+            // Disable reconnect so close after end() does not start another session.
+            if (client.options) {
+                client.options.reconnectPeriod = 0
+            }
+            if (client_connected) {
+                // Leave retained switch state off so HA does not keep "screen on".
+                subscribed.forEach((t) => {
+                    try {
+                        service.publish(t.topic + "/state", false)
+                    } catch (e) {
+                        console.log("[MQTT] stop publish state failed", e)
+                    }
+                })
+                publishAvailability(payloadOffline)
+            }
+            try {
+                // Force-close WITHOUT a clean MQTT DISCONNECT so the broker still
+                // fires the last-will if our retained publishes did not flush before
+                // Electron tore down the renderer (typical when closing the window).
+                client.end(true)
+            } catch (e) {
+                console.log("[MQTT] stop end failed", e)
+            }
+            client_connected = false
+            client_reconnecting = false
         }
 
         service.subscribe = function (topic, callback , options = {} , retry=false) {
@@ -227,7 +295,10 @@
                         "configuration_url": "http://"+ip.address()+":"+config.remote.port+"/config.html",
                         "sw_version": "0.32"
  //                       "area":"Hall"
-                    },                    
+                    },
+                    "availability_topic": availabilityTopic,
+                    "payload_available": payloadOnline,
+                    "payload_not_available": payloadOffline,
                     "object_id": entityId,
                     "unique_id": entityId,
                     "name": "screen",
