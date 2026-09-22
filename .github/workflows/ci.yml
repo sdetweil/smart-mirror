@@ -77,9 +77,11 @@ jobs:
           EOF
 
       # `npm run install` only runs the "install" script (bower), not lifecycle hooks.
+      # Use the local bower binary explicitly — newer npm + --global-style often
+      # leaves `bower` off PATH even though the package is installed.
       - name: Set up application assets
         run: |
-          npm run install
+          node ./node_modules/bower/bin/bower install
           npm run postinstall
 
       - name: Run lint checks after installation

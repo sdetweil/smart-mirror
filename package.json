@@ -4,7 +4,7 @@
   "description": "The fairest of them all",
   "main": "main.js",
   "scripts": {
-    "install": "bower install",
+    "install": "node ./node_modules/bower/bin/bower install",
     "start": "DISPLAY=\"${DISPLAY:=:0}\" LIBGL_ALWAYS_SOFTWARE=1 electron --disable-gpu --disable-gpu-compositing --use-gl=swiftshader main.js ",
     "train-model": "electron scripts/train-model.js",
     "sonus": "node sonus.js",
