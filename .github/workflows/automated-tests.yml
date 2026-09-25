@@ -14,11 +14,12 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
       matrix:
-        node-version: [20.9.0, 20.x, 22.x, 23.x]
+        # Even releases only. Host Node 24 breaks snowboy/nan until sonus is updated.
+        node-version: ['18', '20', '22']
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
@@ -28,10 +29,22 @@ jobs:
           node-version: ${{ matrix.node-version }}
           check-latest: true
           cache: "npm"
-          #cache-dependency-path: "./smart-mirror/package-lock.json"
+      # Snowboy links -lcblas; nested sonus prepare skips root preinstall.
+      - name: "Install native build dependencies"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 libatlas-base-dev libatlas3-base libmagic-dev sox libsox-fmt-all
+          bash scripts/installcblas
+      - name: "Use HTTPS for public GitHub dependencies"
+        run: |
+          git config --global url."https://github.com/".insteadOf git://github.com/
+          git config --global --add url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://github.com/".insteadOf git@github.com:
+      # ignore-scripts so sonus git prepare cannot pin an old nested nan; rebuild after.
       - name: "Install dependencies"
         run: |
-          npm run install --omit=dev
+          npm install --omit=dev --ignore-scripts --no-audit --no-fund
+          npm rebuild
       - name: "Run tests"
         run: |
           Xvfb :99 -screen 0 1024x768x16 &
