@@ -4,7 +4,11 @@ $(function () {
 
 	// global vars
 	var pos = window.location.href.substr(window.location.href.lastIndexOf("/") + 1)
-	var socket = io()
+	// socket.io v4 client (served by the server at /socket.io/socket.io.js)
+	var socket = io({
+		transports: ['websocket', 'polling'],
+		reconnection: true
+	})
 	var $connectionBar = $('#connection-bar')
 	var $connectionText = $('#connection-text')
 	var $navBar = $('#navbar-placeHolder')
@@ -100,9 +104,13 @@ $(function () {
 		}
 	})
 
-	socket.on('disconnect', function () {
+	socket.on('disconnect', function (reason) {
 		$connectionBar.removeClass('connected').addClass('disconnected')
 		$connectionText.html('Disconnected :(')
+		if (reason === 'io server disconnect') {
+			// server forced disconnect — reconnect explicitly (v4 does not auto-retry this case)
+			socket.connect()
+		}
 	})
 
 	// index socket events
@@ -252,7 +260,8 @@ $(function () {
 			$speak.addClass('hidden')
 			$nospeak.removeClass('hidden')
 		}
-		if (annyang) {
+		// v3: annyang is always defined; check SpeechRecognition support instead
+		if (annyang && annyang.isSpeechRecognitionSupported()) {
 			socket.emit('getAnnyAng')
 		}
 	}

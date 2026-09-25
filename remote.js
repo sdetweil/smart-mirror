@@ -39,11 +39,18 @@ remote.start = function () {
 
 	// Start the server
 	server.listen(config.remote.port)
-	// Serve jsonform straight from node_modules — no postinstall copy into remote/.
+	// Serve jsonform / annyang / fontawesome straight from node_modules — no postinstall copy into remote/.
 	app.use('/jsonform', express.static(path.join(__dirname, 'node_modules', 'jsonform')))
+	app.use('/annyang', express.static(path.join(__dirname, 'node_modules', 'annyang', 'dist')))
+	app.use('/fontawesome', express.static(path.join(__dirname, 'node_modules', '@fortawesome', 'fontawesome-free')))
 	// Use the remote directory and initilize socket connection
 	app.use(express.static(__dirname + '/remote'))
-	remote.io = require('socket.io')(server)
+	// socket.io v4: CORS must be explicit (phones hit the remote by LAN IP).
+	const { Server } = require('socket.io')
+	remote.io = new Server(server, {
+		cors: { origin: true },
+		maxHttpBufferSize: 1e7
+	})
 
 	/**
    * When the connection begins
@@ -96,6 +103,10 @@ remote.start = function () {
 				configJSON = configSchema
 				socket.emit("json", { "configJSON": configJSON, "configDefault": configDefault, "config": config })
 			})
+		})
+
+		socket.on('disconnect', function () {
+			remote.emit('disconnected')
 		})
 
 	}) // end - connection
@@ -156,12 +167,6 @@ remote.start = function () {
 			fs.unlinkSync(langfile)		
 		}
 	}
-	/**
-   * When a remote disconnects
-   */
-	remote.io.on('disconnect', function () {
-		remote.emit('disconnected')
-	})// end - disconnect
 } // end - start
 
 module.exports = remote
