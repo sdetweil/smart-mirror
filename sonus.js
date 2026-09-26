@@ -151,6 +151,8 @@ if (config.assistant | config.alexa | true) {
 	const { Server } = require("socket.io");
 	control.io = new Server(server, {
 		cors: { origin: true },
+		// Allow older recorder / plugin clients (socket.io v2) during migration.
+		allowEIO3: true,
 	});
 
 	control.io.on("connection", function (socket) {
